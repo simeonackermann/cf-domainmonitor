@@ -20,7 +20,7 @@
   },
 
   "build": {
-    "icon": "build/icon.icns",
+    "icon": "build/icon/icon.icns",
     "appId": "domain-monitor.id",
     "files": [
       "build/*"
@@ -28,18 +28,18 @@
     "mac": {
       "category": "public.app-category.utilities",
       "target": "dmg",
-      "icon": "build/icon.icns"
+      "icon": "build/icon/icon.icns"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon/icon.png"
     }
   },
 
-  "files": ["**/*", "build/icon.*"],
-  "icon": "build/icon.icns",
+  "files": ["**/*", "build/icon/icon.*"],
+  "icon": "build/icon/icon.icns",
 
   "electronWebpack": {
     "title": true,
