@@ -13,8 +13,10 @@
     "compile": "electron-webpack",
     "dist": "yarn compile && electron-builder",
     "make": "yarn compile && electron-builder",
-    "make-all": "yarn compile && electron-builder -mw",
-    "dist:dir": "yarn dist --dir -c.compression=store -c.mac.identity=null"
+    "make-all": "yarn compile && electron-builder -lm",
+    "dist:dir": "yarn dist --dir -c.compression=store -c.mac.identity=null",
+    "lint": "echo \"No linting configured\"",
+    "test": "echo \"No test configured\""
   },
 
   "build": {
