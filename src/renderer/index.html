@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Domain Monitor</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.1/semantic.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/dataTables.semanticui.min.css">
+  </head>
+  <body>
+
+    <form class="ui form" id="config-form">
+      <div class="two fields">
+        <div class="field">
+          <label>Auth Mail</label>
+          <input id="mail" type="text">
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input id="key" type="text">
+        </div>
+      </div>
+      <input id="submit-btn" type="submit" value="Go" class="ui submit button" id="go-btn">
+    </form>
+
+    <div id="loading" style="display:none" class="ui text loader">Loading</div>
+
+    <div class="ui message" id="message-wrapper" style="display:none"></div>
+
+    <table id="datatable" class="ui celled table hover compact" style="display:none;width:100%"></table>
+  </body>
+</html>
