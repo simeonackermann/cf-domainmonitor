@@ -14,6 +14,8 @@
     "dist": "yarn compile && electron-builder",
     "make": "yarn compile && electron-builder",
     "make-all": "yarn compile && electron-builder -lm",
+    "make-mac": "yarn compile && electron-builder -m",
+    "make-linux": "yarn compile && electron-builder -l",
     "dist:dir": "yarn dist --dir -c.compression=store -c.mac.identity=null",
     "lint": "echo \"No linting configured\"",
     "test": "echo \"No test configured\""
@@ -39,7 +41,6 @@
   },
 
   "files": ["**/*", "build/icon/icon.*"],
-  "icon": "build/icon/icon.icns",
 
   "electronWebpack": {
     "title": true,

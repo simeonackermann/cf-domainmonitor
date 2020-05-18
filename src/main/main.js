@@ -12,7 +12,7 @@ let mainWindow
 function createMainWindow() {
   const window = new BrowserWindow({
     webPreferences: {nodeIntegration: true},
-    icon: path.join(__dirname, "build", "icon.png"),
+    icon: path.join(__dirname, "../../build/icon/icon.png"),
     autoHideMenuBar: true
   })
 
