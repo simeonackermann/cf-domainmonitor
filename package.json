@@ -9,6 +9,7 @@
     "email": "amseon@web.de"
   },
   "repository": "https://github.com/simeonackermann/cf-domainmonitor",
+  "main": "src/main/main.js",
   "scripts": {
     "dev": "electron-webpack dev",
     "compile": "electron-webpack",
