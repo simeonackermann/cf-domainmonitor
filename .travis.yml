@@ -51,6 +51,7 @@ deploy:
   provider: script
   script: bash deploy.travis.sh
   skip_cleanup: true
+  overwrite: true
   on:
     branch: prod
 
