@@ -8,6 +8,7 @@
     "name": "Simeon Ackermann",
     "email": "amseon@web.de"
   },
+  "repository": "https://github.com/simeonackermann/cf-domainmonitor",
   "scripts": {
     "dev": "electron-webpack dev",
     "compile": "electron-webpack",
@@ -24,6 +25,7 @@
   "build": {
     "icon": "build/icon/icon.icns",
     "appId": "domain-monitor.id",
+    "publish": "github",
     "files": [
       "build/*"
     ],
@@ -37,6 +39,20 @@
         "AppImage"
       ],
       "icon": "build/icon/icon.png"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 110,
+          "y": 150
+        },
+        {
+          "x": 240,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     }
   },
 
