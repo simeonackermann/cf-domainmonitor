@@ -41,9 +41,9 @@ script:
         -v ~/.cache/electron:/root/.cache/electron \
         -v ~/.cache/electron-builder:/root/.cache/electron-builder \
         electronuserland/builder \
-        /bin/bash -c "yarn --link-duplicates --pure-lockfile && yarn test"
+        /bin/bash -c "yarn --link-duplicates --pure-lockfile && yarn release --linux"
     else
-      yarn test
+      yarn release
     fi
 
 # only deploy to github on a merge to the prod branch

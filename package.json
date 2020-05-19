@@ -19,7 +19,7 @@
     "make-mac": "yarn compile && electron-builder -m",
     "make-linux": "yarn compile && electron-builder -l",
     "dist:dir": "yarn dist --dir -c.compression=store -c.mac.identity=null",
-    "release": "electron-builder",
+    "release": "yarn compile && electron-builder",
     "lint": "echo \"No linting configured\"",
     "test": "echo \"No test configured\""
   },
