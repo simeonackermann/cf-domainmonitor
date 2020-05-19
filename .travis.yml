@@ -52,17 +52,17 @@ deploy:
   script: bash deploy.travis.sh
   skip_cleanup: true
   on:
-    tags: true
+    branch: prod
 
 before_cache:
   - rm -rf $HOME/.cache/electron-builder/wine
 
-branches:
-  except:
-    - "/^v\\d+\\.\\d+\\.\\d+$/"
+# branches:
+#   except:
+#     - "/^v\\d+\\.\\d+\\.\\d+$/"
 # only run this script on pull requests and merges into
 # the 'master' and 'prod' branches
-# branches:
-#   only:
-#   - master
-#   - prod
+branches:
+  only:
+  - master
+  - prod
