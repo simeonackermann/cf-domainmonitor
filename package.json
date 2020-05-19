@@ -1,7 +1,7 @@
 {
   "name": "domain-monitor",
   "productName": "Domain Monitor",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Simple list, search, filter and label your Cloudflare domains.",
   "license": "MIT",
   "author": {
