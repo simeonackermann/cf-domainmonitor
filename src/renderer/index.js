@@ -31,30 +31,49 @@ const { ipcRenderer } = require('electron');
 const storage = require('electron-json-storage');
 const needle = require('needle');
 
+const isDevelopment = process.env.NODE_ENV !== 'production'
+const env = process.env.NODE_ENV || 'production';
+let config = {}
+try {
+    config = require('../../config')[env];
+} catch (e) {
+    console.log('Configfile not found.');
+
+}
+
 window.$ = window.jQuery = require('jquery');
 require( 'datatables.net-se' )();
 require( 'datatables.net-buttons-se' )();
 require( 'datatables.net-searchpanes-se' )();
 require( 'datatables.net-select-se' )();
 
-let apimail = ""
-let apikey = ""
+let apimail = config.apimail ? config.apimail : null
+let apikey = config.apikey ? config.apikey : null
+let limit = config.limit ? config.limit : null
 
 window.addEventListener('DOMContentLoaded', () => {
 
-    // const dataPath = storage.getDataPath();
-    // console.log('storage dataPath', dataPath);
+    const dataPath = storage.getDataPath();
+    console.log('storage dataPath', dataPath);
 
     // storage.get('foobar', function(error, data) {
     //     if (error) throw error;
-
-    //     console.log('storage foobar', data);
+    //     console.log('storage foobar:', data);
     //     storage.set('foobar', { foo: 'bar' }, function(error) {
     //         if (error) throw error;
     //       });
     // });
 
+    if (apimail) document.querySelector("#mail").value = apimail
+    if (apikey) document.querySelector("#key").value = apikey
+
     $(document).ready(function() {
+
+        if (apimail && apikey) {
+            console.log("Submit the form?!");
+
+            // $("#config-form").submit((e) => { e.preventDefault()})
+        }
 
         $("#config-form").submit((e) => {
             e.preventDefault()
@@ -72,10 +91,31 @@ window.addEventListener('DOMContentLoaded', () => {
             $("#message-wrapper").css("display", "none")
         })
         // ipcRenderer.send('init-data', true)
+
+        // document.querySelectorAll("select.label").forEach((select) => {
+        //     select.addEventListener('change', function() {
+        //         console.log('You selected: ', this.value);
+        //         saveLabel("foo.bar", this.value)
+        //     });
+        // })
+
     });
-
-
 })
+
+function saveLabel(domain = "", label = "") {
+    if (domain == "" || label == "") return;
+
+    storage.get('label', function(error, data) {
+        if (error) throw error;
+
+        data[domain] = label
+        console.log('Save Label:', domain, label, data);
+
+        storage.set('label', data, function(error) {
+            if (error) throw error;
+        });
+    });
+}
 
 function cfRequest(path, method = "get", data = {}) {
     const options = {
@@ -109,13 +149,16 @@ function cfRequest(path, method = "get", data = {}) {
 }
 
 function fetchAllZones(page = 1, prevZones = []) {
-    const perPage = 50
+    const perPage = limit ? limit : 50
     let url = `/zones?page=${page}&per_page=${perPage}`;
 
     return new Promise((resolve, reject) => {
         cfRequest(url)
         .then(body => {
             const info = body.result_info
+            if (body.result.length + prevZones.length >= limit) {
+                return body.result
+            }
             if (info.page < info.total_pages) {
                 // do the recursive request here, append the results
                 return fetchAllZones(page+1, body.result)
@@ -170,6 +213,7 @@ function init() {
     // TODO may use storage as cache
 
     let allZones = []
+    let allDomains = []
 
     fetchAllZones()
     .then(zones => {
@@ -188,11 +232,24 @@ function init() {
     })
     .then(domains => {
         console.log('Domain infos: ', domains);
+        allDomains = domains
 
-        // console.log("All domains:", domains);
+        return new Promise((resolve, reject) => {
+            storage.get('label', function(error, data) {
+                if (error) reject(error);
+                resolve(data)
+            })
+        })
+    })
+    .then(storedLabel => {
+        console.log('storedLabel', storedLabel);
 
         const mergedData = allZones.map(zone => {
-            return Object.assign({}, zone, domains.find (d => d.name == zone.name))
+            return Object.assign({},
+                zone,
+                allDomains.find (d => d.name == zone.name),
+                { label: storedLabel.hasOwnProperty(zone.name) ? storedLabel[zone.name] : "" }
+            )
         })
         console.log('All Data', mergedData);
 
@@ -200,7 +257,6 @@ function init() {
     })
     .catch(error => {
         console.error('Error on init', error);
-        document.getElementById("loading").style.display ="none"
 
         const mbox = document.querySelector("#message-wrapper")
         mbox.style.display ="block"
@@ -213,27 +269,69 @@ function init() {
 }
 
 function fillTable(data) {
-    document.getElementById("loading").style.display ="none"
     document.getElementById("datatable").style.display ="table"
 
-    $('#datatable').DataTable({
+    const datatable = $('#datatable').DataTable({
         "paging": false, // disable pagination
-        select: {
-            style: 'multi'
+        "select": {
+            "style": 'multi'
         },
         "data": data,
         "columns": [
             { title: "Name", data: "name" },
             { title: "Expires", data: "expires_at" },
-            { title: "Registrar", data: "current_registrar" }
-        ]
+            { title: "Registrar", data: "current_registrar" },
+            { title: "Locked", data: "locked" },
+            { title: "Label", data: "label" }
+        ],
+        "columnDefs": [ {
+            "targets": -1,
+            "data": "label",
+            // "defaultContent": "<button>Click!</button>"
+            "render": function ( data, type, row, meta ) {
+                // console.log('Add data to row', data, type, row, meta);
+                const options = ["proxy", "torrent", "crypto", "vpn"]
+                // options.includes(data.label)
+
+                const wrapper = document.createElement("div");
+                wrapper.classList.add("ui", "form")
+
+                const select = document.createElement("select");
+                select.classList.add("ui", "fluid", "dropdown", "label")
+
+                const option = document.createElement("option");
+                option.text = "";
+                select.appendChild(option);
+
+                options.forEach((opt) => {
+                    const option = document.createElement("option");
+                    option.value = opt;
+                    option.text = opt;
+
+                    if (data == opt) {
+
+                        option.selected = true
+                        option.setAttribute("selected", true)
+                    }
+
+                    select.appendChild(option);
+                })
+                wrapper.appendChild(select)
+
+                return wrapper.outerHTML
+            }
+        } ]
         // TODO add selection checkbox:
         // https://datatables.net/extensions/select/examples/initialisation/checkbox.html
     })
 
-    // $('#datatable tbody').on( 'click', 'tr', function () {
-    //     $(this).toggleClass('selected');
-    // } );
+    $('#datatable tbody').on( 'change', 'select', function () {
+        var data = datatable.row( $(this).parents('tr') ).data();
+        // alert( data[0] +"'s salary is: "+ data[ 5 ] );
+        var value = $("option:selected", this).text();
+        console.log('Change select list', this, value, data);
+        saveLabel(data.name, value)
+    } );
 }
 
 ipcRenderer.on("tabledata", (e, data) => {
