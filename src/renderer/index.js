@@ -30,6 +30,7 @@ import './index.css';
 const { ipcRenderer } = require('electron');
 const storage = require('electron-json-storage');
 const needle = require('needle');
+const moment = require('moment');
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 const env = process.env.NODE_ENV || 'production';
@@ -49,7 +50,7 @@ require( 'datatables.net-select-se' )();
 
 let apimail = config.apimail ? config.apimail : null
 let apikey = config.apikey ? config.apikey : null
-let limit = config.limit ? config.limit : null
+let limit = config.limit ? config.limit : undefined
 
 window.addEventListener('DOMContentLoaded', () => {
 
@@ -69,11 +70,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     $(document).ready(function() {
 
-        if (apimail && apikey) {
-            console.log("Submit the form?!");
-
-            // $("#config-form").submit((e) => { e.preventDefault()})
-        }
+        // fillTable()
 
         $("#config-form").submit((e) => {
             e.preventDefault()
@@ -90,6 +87,12 @@ window.addEventListener('DOMContentLoaded', () => {
             // $("#loading").css("display", "block")
             $("#message-wrapper").css("display", "none")
         })
+
+        if (apimail && apikey) {
+            // $("#submit-btn").click();
+        }
+
+
         // ipcRenderer.send('init-data', true)
 
         // document.querySelectorAll("select.label").forEach((select) => {
@@ -102,19 +105,34 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 })
 
-function saveLabel(domain = "", label = "") {
-    if (domain == "" || label == "") return;
+function saveLabel(domain = "", label = "", callback) {
+    if (domain == "") return;
 
     storage.get('label', function(error, data) {
-        if (error) throw error;
+        if (error) {
+            console.error(error);;
+            return callback(false);
+        }
 
         data[domain] = label
         console.log('Save Label:', domain, label, data);
 
         storage.set('label', data, function(error) {
-            if (error) throw error;
+            if (error) {
+                console.error(error);;
+                return callback(false);
+            }
+            return callback(true);
         });
     });
+}
+
+function getCached(key = "", maxAge = 60*60*24) {
+
+}
+
+function addCache(key = "", value = {}) {
+
 }
 
 function cfRequest(path, method = "get", data = {}) {
@@ -126,8 +144,12 @@ function cfRequest(path, method = "get", data = {}) {
         }
     }
 
+    if (path[0] != "/") {
+        path = "/" + path
+    }
+
     return new Promise((resolve, reject) => {
-        needle(method, `https://api.cloudflare.com/client/v4/${path}`, data, options)
+        needle(method, `https://api.cloudflare.com/client/v4${path}`, data, options)
         .then(result => {
             // console.log('cfRequest result.body', result.body);
             if (!result.body || !result.body.success) {
@@ -135,7 +157,7 @@ function cfRequest(path, method = "get", data = {}) {
                 if (result.body.errors) {
                     reject(new Error(JSON.stringify(result.body.errors)))
                 } else {
-                    reject(new Error("Unknown error"))
+                    reject(new Error("Unknown error on CF API request"))
                 }
 
             }
@@ -208,17 +230,38 @@ function fetchDomainInfo(accountId = "", domain = "") {
     });
 }
 
+function fetchDNS(zoneID = "") {
+    if (zoneID == "")
+        return new Promise((resolve, reject) => {reject(new Error('Empty zone id given'))})
+
+    return new Promise((resolve, reject) => {
+            cfRequest(`/zones/${zoneID}/dns_records`, 'get')
+            .then(body => {
+                resolve(body.result)
+            })
+            .catch(error => {
+                console.error("Error on fetch dns records:", error);
+                reject(error)
+            })
+        });
+}
+
 function init() {
 
     // TODO may use storage as cache
 
     let allZones = []
     let allDomains = []
+    let allDNS = []
 
     fetchAllZones()
     .then(zones => {
         allZones = zones
         console.log('All zones:', zones);
+
+        if (zones.length == 0) {
+            return []
+        }
 
         const accountId = zones[0]["account"]["id"]
         // const names = zones.map(z => z.name)
@@ -234,6 +277,18 @@ function init() {
         console.log('Domain infos: ', domains);
         allDomains = domains
 
+        // return fetchDNS(allZones[0]["id"])
+        const dnsRecordPrms = [];
+        allZones.forEach(zone => {
+            dnsRecordPrms.push(fetchDNS(zone.id))
+        })
+        return Promise.all(dnsRecordPrms)
+    })
+    .then(dns => {
+        console.log('DNS records: ', dns);
+        allDNS = dns
+
+        // get stored labels
         return new Promise((resolve, reject) => {
             storage.get('label', function(error, data) {
                 if (error) reject(error);
@@ -242,12 +297,17 @@ function init() {
         })
     })
     .then(storedLabel => {
-        console.log('storedLabel', storedLabel);
+        console.log('Stored label', storedLabel);
 
+        // MERGE DATA
         const mergedData = allZones.map(zone => {
             return Object.assign({},
                 zone,
                 allDomains.find (d => d.name == zone.name),
+                { dns_recods: allDNS.find(d => {
+                    if (d.length == 0) return false
+                    return d.find(de => de.zone_id == zone.id)
+                }) },
                 { label: storedLabel.hasOwnProperty(zone.name) ? storedLabel[zone.name] : "" }
             )
         })
@@ -279,62 +339,153 @@ function fillTable(data) {
         "data": data,
         "columns": [
             { title: "Name", data: "name" },
-            { title: "Expires", data: "expires_at" },
+            { title: "Expires", data: "expires_at", className: "date-cells" },
+            { title: "DNS", data: null, orderable: false },
             { title: "Registrar", data: "current_registrar" },
             { title: "Locked", data: "locked" },
-            { title: "Label", data: "label" }
+            { title: "Auto renew", data: function ( row, type, val, meta ) {
+                return row.hasOwnProperty("auto_renew") ? row.auto_renew : 'undefined'
+            } },
+            { title: "Privacy", data: "privacy" },
+            { title: "Fee", data: function ( row, type, val, meta ) {
+                if (!Number.isFinite(row.fees.registration_fee)
+                    || !Number.isFinite(row.fees.icann_fee)
+                ) {
+                    return row.fees.registration_fee + '<br />' + row.fees.icann_fee
+                }
+                return (row.fees.registration_fee + row.fees.icann_fee) + ' $'
+            }},
+            { title: "Label", data: "label", orderable: false }
         ],
-        "columnDefs": [ {
-            "targets": -1,
-            "data": "label",
-            // "defaultContent": "<button>Click!</button>"
-            "render": function ( data, type, row, meta ) {
-                // console.log('Add data to row', data, type, row, meta);
-                const options = ["proxy", "torrent", "crypto", "vpn"]
-                // options.includes(data.label)
+        "columnDefs": [
+            // expires at
+            {
+                targets: 1,
+                render: function ( data, type, row, meta ) {
+                    // const d = new Date(data)
+                    // return d.toLocaleDateString();
 
-                const wrapper = document.createElement("div");
-                wrapper.classList.add("ui", "form")
+                    const m = moment(data);
+                    return m.format('YYYY-MMM-D')
+                }
+            },
+            // DNS
+            {
+                targets: 2,
+                render: function ( data, type, row, meta ) {
+                    if (!data.dns_recods || data.dns_recods.length == 0) return "undefined"
 
-                const select = document.createElement("select");
-                select.classList.add("ui", "fluid", "dropdown", "label")
-
-                const option = document.createElement("option");
-                option.text = "";
-                select.appendChild(option);
-
-                options.forEach((opt) => {
-                    const option = document.createElement("option");
-                    option.value = opt;
-                    option.text = opt;
-
-                    if (data == opt) {
-
-                        option.selected = true
-                        option.setAttribute("selected", true)
+                    let res = ""
+                    data.dns_recods.forEach(record => {
+                        if (record.type == "A") {
+                            res = res + record.name + " = " + record.content + "<br />"
+                        }
+                    })
+                    return res
+                }
+            },
+            // locked
+            {
+                targets: 4,
+                render: function ( data, type, row, meta ) {
+                    return data ? '<i class="lock icon"></i>' : '<i class="lock open icon"></i>';
+                }
+            },
+            // privacy
+            {
+                targets: 6,
+                render: function ( data, type, row, meta ) {
+                    return data ? '<i class="shield alternate icon"></i>' : '<i class="ban icon"></i>';
+                }
+            },
+            // label
+            {
+                targets: -1,
+                data: "label",
+                render: function ( data, type, row, meta ) {
+                    if (data) {
+                        return getLabelUi(data).outerHTML
                     }
+                    return getLabelSelectUi(["proxy", "torrent", "crypto", "vpn"], data).outerHTML
+                }
+            },
 
-                    select.appendChild(option);
-                })
-                wrapper.appendChild(select)
+        ],
+        "createdRow": function ( row, data, index ) {
+            // TODO add data-sort and data-filter attribute to label cells
+            // see https://datatables.net/examples/advanced_init/html5-data-attributes.html
+            // if ( data[5].replace(/[\$,]/g, '') * 1 > 150000 ) {
+            //     $('td', row).eq(5).addClass('highlight');
+            // }
+        }
 
-                return wrapper.outerHTML
-            }
-        } ]
         // TODO add selection checkbox:
         // https://datatables.net/extensions/select/examples/initialisation/checkbox.html
     })
 
+    // event listener: select a label
     $('#datatable tbody').on( 'change', 'select', function () {
         var data = datatable.row( $(this).parents('tr') ).data();
-        // alert( data[0] +"'s salary is: "+ data[ 5 ] );
         var value = $("option:selected", this).text();
-        console.log('Change select list', this, value, data);
-        saveLabel(data.name, value)
+
+        saveLabel(data.name, value, (res) => {
+            if (!res) return
+            // TODO show error
+            $(this).parents('td').append(getLabelUi(value))
+            $(this).parent().remove()
+        })
+
+
+    } );
+
+    // event listener: remove label
+    $('#datatable tbody').on( 'click', '.delete-label', function () {
+        var data = datatable.row( $(this).parents('tr') ).data();
+        console.log('Delete label', data);
+
+        saveLabel(data.name, "", (res) => {
+            if (!res) return
+            // TODO show error
+            $(this).parent().after(getLabelSelectUi(["proxy", "torrent", "crypto", "vpn"], data))
+            $(this).parent().remove();
+        })
     } );
 }
 
-ipcRenderer.on("tabledata", (e, data) => {
-    console.log('data in renderer', data);
+function getLabelUi(label = "") {
+    const doc = new DOMParser().parseFromString(`<a class="ui label">${label} <i class="delete icon delete-label"></i></a>`, "text/html")
+    return doc.body.firstChild;
+}
 
-})
+function getLabelSelectUi(options = [], value = "") {
+    // const options = ["proxy", "torrent", "crypto", "vpn"]
+    const doc = new DOMParser().parseFromString(`
+        <div class="ui form label-select">
+            <select class="ui fluid dropdown label">
+                <option></option>
+            </select>
+        </div>
+    `, "text/html")
+
+    const select = doc.querySelector("select")
+
+    options.forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = opt;
+        option.text = opt;
+
+        if (value == opt) {
+            option.selected = true
+            option.setAttribute("selected", true)
+        }
+
+        select.appendChild(option);
+    })
+
+    return doc.body.firstChild;
+}
+
+// ipcRenderer.on("tabledata", (e, data) => {
+//     console.log('data in renderer', data);
+
+// })

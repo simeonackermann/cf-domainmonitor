@@ -4,3 +4,7 @@ body {
   max-width: 100rem;
   padding: 2rem;
 }
+
+.dataTable .ui.label {
+  white-space: nowrap;
+}

@@ -10,20 +10,23 @@
   <body>
 
     <form class="ui form" id="config-form">
-      <div class="two fields">
+      <div class="three fields">
         <div class="field">
-          <label>Auth Mail</label>
-          <input id="mail" type="text">
+          <input id="mail" type="text" placeholder="Mail">
         </div>
         <div class="field">
-          <label>API Key</label>
-          <input id="key" type="password">
+          <input id="key" type="password" placeholder="API key">
+        </div>
+        <div class="field">
+          <input id="submit-btn" type="submit" value="Go" class="ui submit button primary" id="go-btn">
         </div>
       </div>
-      <input id="submit-btn" type="submit" value="Go" class="ui submit button" id="go-btn">
+
     </form>
 
     <div class="ui message" id="message-wrapper" style="display:none"></div>
+
+    <hr />
 
     <table id="datatable" class="ui celled table hover compact" style="display:none;width:100%"></table>
   </body>
