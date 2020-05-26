@@ -42,11 +42,20 @@ try {
 
 }
 
+let exampleData = null
+if (isDevelopment) {
+    try {
+        exampleData = require('../../exampleData');
+    } catch (e) {
+    }
+}
+
 window.$ = window.jQuery = require('jquery');
 require( 'datatables.net-se' )();
 require( 'datatables.net-buttons-se' )();
 require( 'datatables.net-searchpanes-se' )();
 require( 'datatables.net-select-se' )();
+require( 'datatables.net-buttons/js/buttons.html5.js' )();
 
 let apimail = config.apimail ? config.apimail : null
 let apikey = config.apikey ? config.apikey : null
@@ -55,7 +64,7 @@ let limit = config.limit ? config.limit : undefined
 window.addEventListener('DOMContentLoaded', () => {
 
     const dataPath = storage.getDataPath();
-    console.log('storage dataPath', dataPath);
+    // console.log('storage dataPath', dataPath);
 
     // storage.get('foobar', function(error, data) {
     //     if (error) throw error;
@@ -90,6 +99,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
         if (apimail && apikey) {
             // $("#submit-btn").click();
+        }
+
+        if (exampleData) {
+            console.log('[DEV] Fill tablew with example data', exampleData);
+            fillTable(exampleData);
         }
 
 
@@ -312,6 +326,8 @@ function init() {
             )
         })
         console.log('All Data', mergedData);
+        console.log(JSON.stringify(mergedData));
+
 
         fillTable(mergedData);
     })
@@ -328,7 +344,11 @@ function init() {
 
 }
 
-function fillTable(data) {
+function fillTable(data = []) {
+    if (!data || data.length == 0) {
+        console.log('Empty data given');
+        return;
+    }
     document.getElementById("datatable").style.display ="table"
 
     const datatable = $('#datatable').DataTable({
@@ -338,15 +358,14 @@ function fillTable(data) {
         },
         "data": data,
         "columns": [
+            { title: "" },
             { title: "Name", data: "name" },
             { title: "Expires", data: "expires_at", className: "date-cells" },
             { title: "DNS", data: null, orderable: false },
-            { title: "Registrar", data: "current_registrar" },
-            { title: "Locked", data: "locked" },
-            { title: "Auto renew", data: function ( row, type, val, meta ) {
-                return row.hasOwnProperty("auto_renew") ? row.auto_renew : 'undefined'
-            } },
-            { title: "Privacy", data: "privacy" },
+            { title: "Registrar", data: "current_registrar", className: "centered-cells" },
+            { title: "Locked", data: "locked", className: "centered-cells" },
+            { title: "Auto Renew", className: "centered-cells", data: "auto_renew" },
+            { title: "Privacy", data: "privacy", className: "centered-cells" },
             { title: "Fee", data: function ( row, type, val, meta ) {
                 if (!Number.isFinite(row.fees.registration_fee)
                     || !Number.isFinite(row.fees.icann_fee)
@@ -358,9 +377,19 @@ function fillTable(data) {
             { title: "Label", data: "label", orderable: false }
         ],
         "columnDefs": [
-            // expires at
+            // checkbox: 0
             {
-                targets: 1,
+                targets: 0,
+                data: null,
+                className: 'select-checkbox',
+                defaultContent: '',
+                orderable: false
+            },
+
+            // name: 1
+            // expires at: 2
+            {
+                targets: 2,
                 render: function ( data, type, row, meta ) {
                     // const d = new Date(data)
                     // return d.toLocaleDateString();
@@ -369,9 +398,9 @@ function fillTable(data) {
                     return m.format('YYYY-MMM-D')
                 }
             },
-            // DNS
+            // DNS: 3
             {
-                targets: 2,
+                targets: 3,
                 render: function ( data, type, row, meta ) {
                     if (!data.dns_recods || data.dns_recods.length == 0) return "undefined"
 
@@ -384,21 +413,30 @@ function fillTable(data) {
                     return res
                 }
             },
-            // locked
+            // registrar: 4
+            // locked: 5
             {
-                targets: 4,
+                targets: 5,
                 render: function ( data, type, row, meta ) {
                     return data ? '<i class="lock icon"></i>' : '<i class="lock open icon"></i>';
                 }
             },
-            // privacy
+            // auto renew: 6
             {
                 targets: 6,
                 render: function ( data, type, row, meta ) {
-                    return data ? '<i class="shield alternate icon"></i>' : '<i class="ban icon"></i>';
+                    return data ? '<i class="check icon"></i>' : '<i class="times icon"></i>';
                 }
             },
-            // label
+            // privacy: 7
+            {
+                targets: 7,
+                render: function ( data, type, row, meta ) {
+                    return data ? '<i class="shield alternate icon"></i>' : '<i class="times icon"></i>';
+                }
+            },
+            // fee: 8
+            // label: 9
             {
                 targets: -1,
                 data: "label",
@@ -411,16 +449,55 @@ function fillTable(data) {
             },
 
         ],
+        // checkbox
+        select: {
+            style:    'multi',
+            selector: 'td:first-child'
+        },
+        // order by name
+        order: [[ 1, 'asc' ]],
+
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'csv',
+                text: 'Export CSV',
+                className: 'ui button',
+                action: function ( e, dt, node, config ) {
+                    let rows = getSelectedRows(dt)
+                    let length = rows.length
+                    if (length == 0) {
+                        rows = dt.rows()
+                        length = rows.count()
+                    }
+
+                    let data = "\"Name\", \"Expires at\", \"Registrar\"\n"
+                    for (let i = 0; i < length; i++) {
+                        var d = dt.row(i).data();
+                        data += `\"${d.name}\", \"${d.expires_at}\", \"${d.current_registrar}\"\n`
+                    }
+
+                    $.fn.dataTable.fileSave( new Blob([data] ),
+                        'Domain Monitor Export.csv'
+                    );
+                }
+            }
+        ],
+
+        "initComplete": function (settings, json) {
+            // var api = new $.fn.dataTable.Api( settings );
+            // console.log('datatables copmpleet', settings);
+            // console.log( api.rows( { selected: true } ).data() );
+            // initExportBtn(settings);
+        },
+
         "createdRow": function ( row, data, index ) {
             // TODO add data-sort and data-filter attribute to label cells
             // see https://datatables.net/examples/advanced_init/html5-data-attributes.html
             // if ( data[5].replace(/[\$,]/g, '') * 1 > 150000 ) {
             //     $('td', row).eq(5).addClass('highlight');
             // }
-        }
-
-        // TODO add selection checkbox:
-        // https://datatables.net/extensions/select/examples/initialisation/checkbox.html
+        },
     })
 
     // event listener: select a label
@@ -450,6 +527,20 @@ function fillTable(data) {
             $(this).parent().remove();
         })
     } );
+}
+
+function getSelectedRows(datatable) {
+    const rows = datatable.rows();
+    const selected = []
+
+    for (let i = 0; i < rows.count(); i++) {
+        if ($(datatable.row(i).node()).hasClass('selected')) {
+            selected.push( datatable.row(i) );
+        }
+    }
+    // the selected:true modifier does not work ... ;()
+    // return datatable.rows( { selected: true })
+    return selected;
 }
 
 function getLabelUi(label = "") {

@@ -15,7 +15,7 @@ function createMainWindow() {
     icon: path.join(__dirname, "../../build/icon/icon.png"),
     autoHideMenuBar: true,
     width: 1200,
-    height: 800,
+    height: 800
   })
 
   if (isDevelopment) {
