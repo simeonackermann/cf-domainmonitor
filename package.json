@@ -1,7 +1,7 @@
 {
   "name": "domain-monitor",
   "productName": "Domain Monitor",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "Simple list, search, filter and label your Cloudflare domains.",
   "license": "MIT",
   "author": {
@@ -9,6 +9,7 @@
     "email": "amseon@web.de"
   },
   "repository": "https://github.com/simeonackermann/cf-domainmonitor",
+  "main": "build/main/main.js",
   "scripts": {
     "dev": "electron-webpack dev",
     "compile": "electron-webpack",
@@ -18,17 +19,16 @@
     "make-mac": "yarn compile && electron-builder -m",
     "make-linux": "yarn compile && electron-builder -l",
     "dist:dir": "yarn dist --dir -c.compression=store -c.mac.identity=null",
-    "release": "electron-builder",
+    "release": "yarn compile && electron-builder",
     "lint": "echo \"No linting configured\"",
     "test": "echo \"No test configured\""
   },
-
   "build": {
     "icon": "build/icon/icon.icns",
     "appId": "domain-monitor.id",
     "publish": "github",
     "files": [
-      "build/*"
+      "./build/**/*"
     ],
     "mac": {
       "category": "public.app-category.utilities",
@@ -56,19 +56,17 @@
       ]
     }
   },
-
-  "files": ["**/*", "build/icon/icon.*"],
-
+  "files": [
+    "**/*",
+    "build/icon/icon.*"
+  ],
   "electronWebpack": {
     "title": true,
-
     "renderer": {
       "template": "src/renderer/index.html"
     }
   },
-
   "dependencies": {
-    "source-map-support": "^0.5.16",
     "datatables.net-buttons-se": "^1.6.2",
     "datatables.net-se": "^1.10.21",
     "datatables.net-searchpanes-se": "^1.1.0",
@@ -76,7 +74,9 @@
     "electron-json-storage": "^4.1.8",
     "electron-squirrel-startup": "^1.0.0",
     "jquery": "^3.5.1",
-    "needle": "^2.4.1"
+    "moment": "^2.26.0",
+    "needle": "^2.4.1",
+    "source-map-support": "^0.5.16"
   },
   "devDependencies": {
     "electron": "8.5.2",

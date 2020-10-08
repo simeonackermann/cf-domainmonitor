@@ -6,27 +6,34 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.1/semantic.min.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/dataTables.semanticui.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/select/1.3.1/css/select.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.6.2/css/buttons.dataTables.min.css">
   </head>
   <body>
 
-    <form class="ui form" id="config-form">
-      <div class="two fields">
-        <div class="field">
-          <label>Auth Mail</label>
-          <input id="mail" type="text">
+    <div class="header">
+      <form class="ui form" id="config-form">
+        <div class="three fields">
+          <div class="field">
+            <input id="mail" type="text" placeholder="Mail">
+          </div>
+          <div class="field">
+            <input id="key" type="password" placeholder="API key">
+          </div>
+          <div class="field">
+            <input id="submit-btn" type="submit" value="Go" class="ui submit button primary" id="go-btn">
+          </div>
         </div>
-        <div class="field">
-          <label>API Key</label>
-          <input id="key" type="text">
-        </div>
-      </div>
-      <input id="submit-btn" type="submit" value="Go" class="ui submit button" id="go-btn">
-    </form>
 
-    <div id="loading" style="display:none" class="ui text loader">Loading</div>
+      </form>
+    </div>
 
-    <div class="ui message" id="message-wrapper" style="display:none"></div>
+    <div class="content">
+      <div class="ui message" id="message-wrapper" style="display:none"></div>
 
-    <table id="datatable" class="ui celled table hover compact" style="display:none;width:100%"></table>
+      <hr />
+
+      <table id="datatable" class="ui celled table hover compact" style="display:none;width:100%"></table>
+    </div>
   </body>
 </html>
